@@ -1,0 +1,54 @@
+var app = require('express')();
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+
+var user_list = 0;
+app.get('/', (req, res) => {
+	res.sendFile(__dirname + '/index.html');
+//res.send('<h1>Raspberry Pi run!</h2>');
+});
+
+io.on('connection', socket => {
+	socket.broadcast.emit('auth', socket.id);
+	socket.on('auth', () => socket.broadcast.emit('auth', socket.id));
+	
+	s	ocket.on('move', msg => socket.broadcast.emit('move', {
+
+	});
+	/*console.log(socket.id);
+	//socket.emit('connection', socket); 
+	socket.on('disconnect', () => {
+		//user_list--;
+		console.log('user disconnect');
+		socket.broadcast.emit('exit', socket.id);
+	});
+	socket.on('chat', msg => {
+		//console.log(msg);
+		socket.broadcast.emit('chat', msg);
+	});
+	socket.on('move', msg => {
+		socket.broadcast.emit('move', {
+		id: socket.id,
+		x: msg.x,
+		y: msg.y
+		});
+	});
+	socket.on('auth', msg => {
+		socket.broadcast.emit('auth', {
+			id: socket.id,
+			x: msg.x,
+			y: msg.y
+		});
+	});
+	socket.broadcast.emit('auth', {
+		id: socket.id,
+		x: 10,
+		y: 10
+	});
+	user_list++;*/
+});
+
+
+http.listen(3000, () => {
+	console.log('server run!');
+});

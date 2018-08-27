@@ -1,0 +1,150 @@
+const __MAX = 10, __SERVER_NAME = "magic.cat server", __PATH_USERS = './users/', __SERVER_PORT = 3000,
+	__WORLD_WIDTH = 8, __WORLD_HEIGHT = 8, _WORLD_REGION = 200, __WORLD_MAP = 'world';
+
+let app = require('express')(), http = require('http').Server(app),
+	io = require('socket.io')(http), fs = require('fs'),
+
+	users = {};
+
+class USER {
+	constructor(username, password) {
+		this.username = username;
+		this.auth = false;
+		let content = JSON.parse(fs.readFileSync(__PATH_USERS + username));
+		if (content) {
+			if (password === content.password) {
+				this.x = content.x;
+				this.y = content.y;
+				this.inv = content.inv;
+				this.auth = true;
+			}
+		}
+	}
+	save(data) {
+	}
+}
+
+http.listen(__SERVER_PORT, () => console.log('сервер запущен!'));
+app.get('/login', (req, res) => res.sendFile(__dirname + '/login.html'));
+
+io.on('connection', socket => {
+	console.log('попытка подключиться: ' + socket.id + '...');
+	socket.on('login', msg => {
+		users[socket.id] = new USER(msg.username, msg.password);
+		if (users[socket.id]) {
+			console.log('пользователь ' + msg.username + ' вошел!');
+			io.sockets.socket(socket.id).emit('login', {
+				auth: true,
+				x: users[socket.id].x,
+				y: users[socket.id].y
+			});
+		} else {
+			console.log('были не верно введены данные: ' + socket.id);
+			io.sockets.socket(socket.id).emit('login', {
+				auth: false,
+				message: 'неверно введены данные!'
+			});
+		}
+	});
+});
+io.on('disconnect', socket => {
+
+});
+/*
+let app = require('http').createServer((req, res) => {
+	fs.readFile(__dirname + '/login.html', (err, data) => {
+		if (err) {
+		
+		}
+		res.writeHead(200);
+		res.end(data);
+	});
+}), io = require('socket.io')(app), fs = require('fs'), exp = require('express')();
+app.listen(3000, () => console.log('server run!'));
+
+
+
+exp.get('/:path', (req, res) => {
+	
+	//res.sendFile(__dirname + '/login.html');
+});
+// события:
+io.on('connection', socket => {
+	console.log('user conenct!');
+	// регистрация и вход:
+	let action = ['login', 'reg'], func = [(msg, find) => {
+		if (!find) console.log('пользователь ' + msg.login + ' не найден!');
+	}, (msg, find) => {
+		if (!find) {
+			fs.writeFileSync('./users/' + msg.login, JSON.stringify({
+				password: msg.password,
+				x: 0,
+				y: 0,
+				diamond: 0,
+				inv: []
+			}));
+		}
+	}];
+	action.forEach((e, i) => {
+		socket.on(e, msg => {
+			fs.exists('./users/' + msg.login, find => {
+				func[i](msg, find);
+			});
+		});
+	});
+	/*socket.on('login', msg => {
+		fs.exists('/users/' + msg.username, find => {
+			if (find) {
+
+			} else console.log('пользователя не существует!');
+		});
+	});
+	socket.on('reg', msg => {
+		fs.exists
+	})
+});
+*/
+
+
+/*// подключение библиотек:
+let app = require('express')(), http = require('http').Server(app),
+	io = require('socket.io')(http), fs = require('fs');
+
+class Client {
+	constructor(username, password, socket) {
+		this.username = username;
+		this.password = password;
+		this.socket = socket;
+		this.is_login = false;
+	}
+}
+class Server {
+	constructor(port) {
+		this.client_list = [];
+		this.port = port || 3000;
+	}
+	auth(socket, func) { // авторизация пользователя:
+		socket.on('login', msg => {
+			this.client_list.push(new Client(msg.username, msg.password, socket.id));
+			console.log('пользователь ' + msg.username + ' ввел пароль: ' + msg.password);
+			func(socket);
+		});
+	}
+	update(func) {
+		app.get('/:path', (req, res) => {
+			switch(req.params.path) {
+				case '': res.sendFile(__dirname + '/index.html'); break;
+				case 'login': res.sendFile(__dirname + '/login.html'); break;
+			}		
+		});
+		io.on('connection', socket => {
+			console.log('попытка входа: ' + socket.id);
+			this.auth(socket, func);
+		});
+		io.listen(this.port, () => console.log('server starting!'));
+	}
+}
+let server = new Server();
+server.update(socket => {
+	console.log('вы вошли в систему!');
+});*/

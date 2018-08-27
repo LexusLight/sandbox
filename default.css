@@ -1,0 +1,12 @@
+* {
+        margin: 0;
+        padding: 0;
+}
+canvas {
+	background: #fff;
+	width: 100%;
+}
+body {
+	background: #000;
+}
+address { color: #fff; }

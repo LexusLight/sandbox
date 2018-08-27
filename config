@@ -1,0 +1,12 @@
+{
+	"name": "magic.cat server",
+	"port": 3000,
+	"world": {
+		"backup": "backup.data",
+		"width": 8,
+		"height": 8,
+		"region": 200
+	},
+	"max": 10,
+	"path": "/users/"
+}

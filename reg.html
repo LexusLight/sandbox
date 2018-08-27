@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+	<head>
+		<title>регистрация:</title>
+		<meta charset = "utf-8">
+	</head>
+	<body>
+		<form id = 'reg' method = "post" action = '/reg'>
+			<input name = 'username'>
+			<input name = 'password' type = 'password'>
+			<input name = 'password-r' type = 'password'>
+			<input type = 'submit' value = 'готово'>
+		</form>
+		<script>
+			document.getElementById('reg').onsubmit = e => {
+				document.querySelectorAll('#reg input[name="username"], #reg input[name="password"]').forEach(e => {
+					document.cookie = e.name + '=' + e.value;
+				});
+			};
+		</script>
+	</body>
+</html>

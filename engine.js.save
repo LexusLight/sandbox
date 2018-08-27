@@ -1,0 +1,245 @@
+'use strict';
+(() => {
+	let canvas_id = document.querySelector('canvas');
+	canvas_id.width = 800;
+	canvas_id.height = 450;
+	let canvas = canvas_id.getContext('2d'), player_list = [], gravity = .5,
+		camera = {
+			x: 0,
+			y: 0
+		},
+		mouse = {
+			x: 0,
+			y: 0,
+			event: 0
+		},
+		mouse_event = {
+			lclick: 1,
+			rclick: 2
+		};
+	class Obj {
+		constructor(x, y) {
+			this.x = x || 0;
+			this.y = y || 0;
+			this.hspd = 0;
+			this.vspd = 0;
+		}
+	}
+	class Player extends Obj {
+		constructor(username, id) {
+			super();
+			this.id = id || -1;
+			this.jump = false;
+			this.username = username || 'no name';
+		}
+		draw(nx, ny) {
+			let xx = nx || this.x, yy = ny || this.y;
+			canvas.fillStyle = '#f00';
+			canvas.fillRect(xx - 16 - camera.x, yy - 16 - camera.y, 32, 32);
+		}
+		control(world, sys) {
+			if (this.x + this.hspd >= world.grid.length * 32) {
+				this.x = 0;
+			}
+			if (this.x + this.hspd < 0) {
+				this.x = world.grid.length * 32 + this.hspd;
+			}
+			this.vspd += gravity;
+			if (world.grid[Math.floor(this.x / world.size)][Math.floor((this.y + 16 + this.vspd) / world.size)] != 0) {
+				while(!world.grid[Math.floor(this.x / world.size)][Math.floor((this.y + 16 + Math.sign(this.vspd)) / world.size)]) this.y += Math.sign(this.vspd);
+				this.vspd = 0;
+				this.jump = true;
+			}
+			if (this.jump && (sys.key & sys.keys.up)) {
+				this.vspd = -8;
+				sys.key &=~ sys.keys.up;
+				this.jump = false;
+			}
+			this.hspd = Math.sign((sys.key & sys.keys.right) - (sys.key & sys.keys.left)) * 2;
+			this.x += this.hspd;
+			this.y += this.vspd;
+			if (this.vspd != 0 || this.hspd != 0) network.send('move', { x: this.x, y: this.y });
+		}
+	}
+	class World {
+		constructor(width, height) {
+			this.grid = [];
+			this.size = 32;
+			for (let i = 0; i < width; i++) {
+				this.grid.push([]);
+				for (let j = 0; j < height; j++) {
+					this.grid[i][j] = 0;
+				}
+			}
+		}
+	}
+	class Region {
+		constructor(x, y, width, height) {
+			this.width = width || Math.floor(600 / 32) * 32;
+			this.height = height || Math.floor(400 / 32) * 32;
+			this.x = Math.floor(x / 32) * 32;
+			this.y = Math.floor(y / 32) * 32;
+			console.log([this.x / 32, this.y / 32]);
+		}
+		draw(world, nx, ny) {
+			let xx = nx || this.x, yy = ny || this.y,
+			dx = 0, dy = 0;
+			let x = this.x / 32, y = this.y / 32, w = this.width / 32, h = this.height / 32;
+			for (let i = x; i < x + w; i++) {
+				dy = 0;
+				for (let j = y; j < y + h; j++) {
+					switch(world.grid[i][j]) {
+						case 1: 
+							canvas.fillStyle = '#000';
+							canvas.fillRect(xx + dx * 32 - camera.x, yy + dy * 32 - camera.y, 32, 32);
+						break;
+					}
+					dy++;
+				}
+				dx++;
+			}
+			//canvas.strokeStyle = '#f00';
+			//canvas.strokeRect(xx - camera.x, yy - camera.y, this.width, this.height);
+			if (nx || ny) { // рисование масок объектов:
+				player_list.forEach(e => {
+					if (e.x >= this.x && e.x <= this.x + this.width) {
+						
+						let xx = Math.floor(e.x / (Math.floor(600 / 32) * 32)) * (Math.floor(600 / 32) * 32);
+						if (e.x - xx != 0) e.draw(nx + (e.x - xx));
+					}
+				});
+			}
+			if (mouse.x >= xx && mouse.x <= xx + this.width) {
+				if (mouse.event & mouse_event.lclick) {
+					let i = x + Math.floor((mouse.x - xx) / 32), j = y + Math.floor(mouse.y / 32);
+					network.send('create', {
+						i: i,
+						j: j
+					});
+					world.grid[i][j] = 1;
+					mouse.event &=~ mouse_event.lclick;
+				}
+				if (mouse.event & mouse_event.rclick) {
+					let i = x + Math.floor((mouse.x - xx) / 32), j = y + Math.floor(mouse.y / 32);
+					network.send('destroy', {
+						i: i,
+						j: j
+					});
+					world.grid[i][j] = 0;
+					mouse.event &=~ mouse_event.rclick;
+				}
+			}
+		}
+	}
+	class Network {
+		constructor() { this.socket = io(); }
+		send(key, data) { this.socket.emit(key, data || 1); }
+		get(key, func) { this.socket.on(key, msg => func(msg)); }
+	}
+	class Keyboard {
+		constructor() {
+			this.key = 0;
+			this.keys = {
+				up: 1,
+				left: 2,
+				right: 4
+			};
+			canvas_id.onkeydown = e => {
+				e.preventDefault();
+				switch(e.keyCode) {
+					case 87: this.key |= this.keys.up; break;
+					case 65: this.key |= this.keys.left; break;
+					case 68: this.key |= this.keys.right; break;
+				}
+			};
+			canvas_id.onkeyup = e => {
+				e.preventDefault();
+				switch(e.keyCode) {
+					case 87: this.key &=~ this.keys.up; break;
+					case 65: this.key &=~ this.keys.left; break;
+					case 68: this.key &=~ this.keys.right; break;
+				}
+			}
+			canvas_id.onmousedown = e => {
+				mouse.x = e.pageX + camera.x;
+				mouse.y = e.pageY + camera.y;
+				//console.log(e.which);
+				switch(e.which) {
+					case 1:
+						mouse.event |= mouse_event.lclick;
+					break;
+					case 3: mouse.event |= mouse_event.rclick;
+				}
+				//mouse.event |= mouse_event.lclick;
+			}
+			canvas_id.oncontextmenu = e => {
+				e.preventDefault();
+			}
+		}
+	}
+
+	let network = new Network(), keyboard = new Keyboard(),
+		player = new Player(''), world = new World(10, 10), region_list = [];
+	network.send('world', 1);
+	network.get('world', msg => {
+		world.grid = msg;
+		console.log([world.grid.length, world.grid[0].length]);
+		for (let i = 0; i < 5; i++) {
+			region_list.push(new Region(Math.floor(600 / 32) * 32 * i, 0));
+		}
+		//region_list.push(new Region(0, 0));
+		//region_list.push(new Region(400, 0));
+		//console.log(region_list[1]);
+		console.log('world loading!');
+	});
+	network.send('auth', player.username);
+	network.get('auth', msg => {
+		let is_find = false;
+		player_list.forEach(e => {
+			if (e.id == msg.id) {
+				is_find = true;
+				return;
+			}
+		});
+		if (!is_find) {
+			player_list.push(new Player(msg.username, msg.id));
+			network.send('auth', player.username);
+		}
+	});
+	network.get('move', msg => {
+		player_list.forEach(e => {
+			if (e.id == msg.id) {
+				e.x = msg.x;
+				e.y = msg.y;
+			}
+		});
+	});
+	network.get('destroy', msg => {
+		world.grid[msg.i][msg.j] = 0;
+	});
+	network.get('create', msg => { world.grid[msg.i][msg.j] = 1; });
+	let update = () => {
+		//world.draw();
+		canvas.clearRect(0, 0, 800, 450);
+		if (region_list.length != 0) {
+			region_list.forEach(e => e.draw(world));
+			region_list[region_list.length - 1].draw(world,-Math.floor(600 / 32) * 32, 0);
+			region_list[0].draw(world, Math.floor(600 / 32) * 32 * region_list.length, 0);
+		}
+		player_list.forEach(e => e.draw());
+		player.draw();
+		player.control(world, keyboard);
+		camera.x = player.x - canvas_id.width / 2;
+		camera.y = player.y - canvas_id.height / 2;
+		gui();
+		window.requestAnimationFrame(update);
+	},
+	gui = () => {
+		let icon_size = 48, xx = canvas_id.width / 2 - (icon_size + 4) * 5 / 2;
+		canvas.fillStyle = '#666';
+		for (let i = 0; i < 5; i++) {
+			canvas.fillRect(xx + (icon_size + 4) * i, 10, icon_size, icon_size);
+		}
+	};
+	update();
+})();

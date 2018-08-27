@@ -1,0 +1,26 @@
+<script src = '/socket.io/socket.io.js'></script><!doctype html>
+<html>
+	<head>
+		<meta charset = 'utf-8'>
+		<title>платформер</title>
+		<link rel = 'stylesheet' href = './default.css'>
+	</head>
+	<body>
+		<canvas></canvas>
+		<script src = '/socket.io/socket.io.js'></script>
+		<script>
+			let socket = io();
+			socket.on('connect', msg => {
+				console.log('я подключился!');
+				socket.emit('login', {
+					username: 'magic.cat',
+					password: '123'
+				});
+			});
+			socket.on('disconnect', msg => {
+				console.log('отключение!');
+			});
+		</script>
+		<!--<script src = './engine.js'></script>-->
+	</body>
+</html>

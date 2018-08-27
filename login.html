@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+	<head>
+		<title>вход:</title>
+		<meta charset = "utf-8">
+	</head>
+	<body>
+		<form id = 'login' method = "post" action = '/login'>
+			<input name = 'username'>
+			<input name = 'password' type = 'password'>
+			<input type = 'submit' value = 'готово'>
+		</form>
+		<script>
+			document.getElementById('login').onsubmit = e => {
+				document.querySelectorAll('#login input[name="username"], #login input[name="password"]').forEach(e => {
+					document.cookie = e.name + '=' + e.value;
+					//console.log(e.name, e.value);
+				});
+			};
+		</script>
+	</body>
+</html>
