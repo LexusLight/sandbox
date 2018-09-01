@@ -1,6 +1,35 @@
 'use strict';
 (() => {
-	const __INV_VIEW = 4, __INV_COUNT = 12, __INV_SIZE = 48;
+	const __INV_VIEW = 4, __INV_COUNT = 12, __INV_SIZE = 48,
+		MOUSE_EVENT = {
+			lup: 1,
+			ldown: 2
+		};
+
+
+	class Mouse { // мышь:
+		constructor() {
+			this.x = 0;
+			this.y = 0;
+			this.event = 0;
+			this.item = {
+				id: 0,
+				count: 0
+			}
+		}
+		set(e) {
+			this.x = e.pageX;
+			this.y = e.pageY;
+		}
+		draw() {
+			if (this.item.id != 0 && this.item.count > 0) { // рисование предмета:
+				canvas.fillStyle = '#f00';
+				canvas.fillRect(this.x + 8, this.y + 8, __INV_SIZE - 8, __INV_SIZE - 8);
+			}
+		}
+	}
+	let mouse = new Mouse();
+
 
 	let canvas_id = document.querySelector('canvas');
 	canvas_id.height = canvas_id.clientHeight;
@@ -9,15 +38,6 @@
 		camera = {
 			x: 0,
 			y: 0
-		},
-		mouse = {
-			x: 0,
-			y: 0,
-			event: 0
-		},
-		mouse_event = {
-			lclick: 1,
-			rclick: 2
 		};
 	canvas.imageSmoothingEnabled = false;
 	let object_list = [];
@@ -88,6 +108,38 @@
 			this.id = id || 0;
 			this.type = type || '';
 			this.count = count || 0;
+			this.replace = false;
+		}
+		update(x, y) {
+			if (mouse.x >= x && mouse.x <= x + __INV_SIZE && mouse.y >= y && mouse.y <= y + __INV_SIZE) {
+				if ((mouse.event & MOUSE_EVENT.lup) && this.id == 0 && mouse.item.id != 0) { // принять предмет от мышки:
+					this.id = mouse.item.id;
+					this.count = mouse.item.count;
+					for (let i = 0; i < __INV_COUNT; i++) {
+						if (inventory[i].replace) {
+							inventory[i].id = 0;
+							inventory[i].count = 0;
+							inventory[i].replace = false;
+							break;
+						}
+					}
+					mouse.item = {
+						id: 0,
+						count: 0
+					};
+					mouse.event &=~ MOUSE_EVENT.lup;
+				}
+				if ((mouse.event & MOUSE_EVENT.ldown) && this.id != 0 && mouse.item.id == 0) {
+					mouse.item = {
+						id: this.id,
+						count: this.count
+					};
+					this.replace = true;
+					//this.id = 0;
+					//this.count = 0;
+					mouse.event &=~ MOUSE_EVENT.ldown;
+				}
+			}
 		}
 		draw(x, y, select) {
 			let size = __INV_SIZE;
@@ -228,14 +280,6 @@
 					event: this.event
 				});
 
-				if (mouse.event & mouse_event.lclick) {
-					//let dir = ((mouse.y - this.y) / (mouse.x - this.x));
-					//object_list.push(new Bullet('health', this.x, this.y, this.xscale, 2));
-					this.hp--;
-					//this.event |= this.event_list.action;
-					//this.time_action = 10;
-					mouse.event &=~ mouse_event.lclick;
-				}
 				if (this.time_action > 0) this.time_action--;
 					else {
 						this.event &=~ this.event_list.action;
@@ -325,56 +369,6 @@
 					}
 				});
 			}
-			/*if (mouse.x >= xx && mouse.x <= xx + this.width) {
-				if (mouse.event & mouse_event.lclick) {
-					let i = x + Math.floor((mouse.x - xx) / 32), j = y + Math.floor(mouse.y / 32);
-					network.send('create', {
-						i: i,
-						j: j
-					});
-					world.grid[i][j] = 1;
-					mouse.event &=~ mouse_event.lclick;
-				}
-				if (mouse.event & mouse_event.rclick) {
-					let i = x + Math.floor((mouse.x - xx) / 32), j = y + Math.floor(mouse.y / 32);
-					switch(world.grid[i][j]) {
-						case 1:
-							network.send('destroy', {
-								i: i,
-								j: j
-							});
-							world.grid[i][j] = 0;
-						break;
-						case 2: // снос деревьев:
-							let deleting = (x, y) => {
-								if (x >= 0 && x <= world.grid.length - 1 && y >= 0) {
-									if (world.grid[x][y] == 2 || world.grid[x][y] == 3) {
-										network.send('destroy', {
-											i: x,
-											j: y
-										});
-										if (world.grid[x][y] == 2) {
-											item_list.push(new Item(x * 32 + 16, y * 32 + 16, 2));
-											network.send('item', {
-												action: 'drop',
-												x: x * 32 + 16,
-												y: y * 32 + 16,
-												id: 2
-											});
-										}
-										world.grid[x][y] = 0;
-										deleting(x, y - 1);
-										deleting(x - 1, y);
-										deleting(x + 1, y);
-									}
-								}
-							}
-							deleting(i, j);
-						break;
-					}
-					mouse.event &=~ mouse_event.rclick;
-				}
-			}*/
 			}
 		}
 	}
@@ -417,17 +411,19 @@
 					break;
 				}
 			}
-			canvas_id.onmousedown = e => {
-				mouse.x = e.pageX + camera.x;
-				mouse.y = e.pageY + camera.y;
-				switch(e.which) {
-					case 1: mouse.event |= mouse_event.lclick; break;
-					case 3: mouse.event |= mouse_event.rclick;
-				}
-			}
-			canvas_id.oncontextmenu = e => e.preventDefault();
+			
 		}
 	}
+	canvas_id.onmousemove = e => mouse.set(e);
+	canvas_id.onmouseup = e => {
+		mouse.set(e);
+		mouse.event |= MOUSE_EVENT.lup;
+	}
+	canvas_id.onmousedown = e => {
+		mouse.set(e);
+		mouse.event |= MOUSE_EVENT.ldown;
+	}
+	canvas_id.oncontextmenu = e => e.preventDefault();
 
 	let images = {
 		player: {
@@ -581,10 +577,24 @@
 			// инвентарь:
 			let offset = 8, xx = canvas_id.width / 2 - (__INV_SIZE + offset) * __INV_VIEW / 2,
 				yy = canvas_id.height - (offset + __INV_SIZE);
-			for (let i = 0; i < __INV_VIEW; i++) inventory[i].draw(xx + (__INV_SIZE + offset) * i, yy, inv_select == i);
+			for (let i = 0; i < __INV_VIEW; i++) {
+				inventory[i].update(xx + (__INV_SIZE + offset) * i, yy, inv_select == i)
+				inventory[i].draw(xx + (__INV_SIZE + offset) * i, yy, inv_select == i);
+			}
 			if (_window & window_list.inventory) {
-				for (let i = __INV_VIEW; i < __INV_COUNT; i++)
-						inventory[i].draw(xx + (offset + __INV_SIZE) * ((i - __INV_VIEW) % 4), yy - (offset + __INV_SIZE) * (Math.floor((i - __INV_VIEW) / 4) + 1), false);
+				for (let i = __INV_VIEW; i < __INV_COUNT; i++) {
+					inventory[i].update(xx + (offset + __INV_SIZE) * ((i - __INV_VIEW) % 4), yy - (offset + __INV_SIZE) * (Math.floor((i - __INV_VIEW) / 4) + 1));	
+					inventory[i].draw(xx + (offset + __INV_SIZE) * ((i - __INV_VIEW) % 4), yy - (offset + __INV_SIZE) * (Math.floor((i - __INV_VIEW) / 4) + 1), false);
+				
+				}
+			}
+			if (mouse.event & MOUSE_EVENT.ldown) mouse.event &=~ MOUSE_EVENT.ldown;
+			if (mouse.event & MOUSE_EVENT.lup) {
+				mouse.event &=~ MOUSE_EVENT.lup;
+				mouse.item = {
+					id: 0,
+					count: 0
+				}
 			}
 			if (keyboard.key & keyboard.keys.num1) {
 				inv_select = 0;
@@ -602,6 +612,10 @@
 				inv_select = 3;
 				keyboard.key &=~ keyboard.keys.num4;
 			}
+			// рисовать курсор:
+			mouse.draw();
+
+
 			//let icon_size = 48, xx = canvas_id.width / 2 - (icon_size + 4) * __INV_VIEW / 2;
 			/*canvas.fillStyle = '#666';
 			for (let i = 0; i < __INV_VIEW; i++) {
